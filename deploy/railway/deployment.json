@@ -1,0 +1,54 @@
+{
+  "project_name": "tracker",
+  "project_id": "9e8dfe03-e471-40b0-afd8-8e613afe7f01",
+  "environment_name": "production",
+  "environment_id": "44cdc923-fa35-4db1-b88a-8a596c28c6fb",
+  "dashboard_url": "https://railway.com/project/9e8dfe03-e471-40b0-afd8-8e613afe7f01?environmentId=44cdc923-fa35-4db1-b88a-8a596c28c6fb",
+  "public_url": null,
+  "source": "Railway CLI upload",
+  "outbox_mode": "embedded in core, OUTBOX_EMBEDDED=true",
+  "services": {
+    "core": {
+      "id": "59ba03d2-7b2c-45bb-9d54-2ab14b29899f",
+      "dockerfile": "core/Dockerfile",
+      "port": 8000,
+      "healthcheck_path": "/health"
+    },
+    "notifications": {
+      "id": "f370063d-9027-41a1-a1ac-63630bcd4cd1",
+      "dockerfile": "notifications/Dockerfile",
+      "port": 5000,
+      "healthcheck_path": "/health"
+    },
+    "reports": {
+      "id": "0bbd0877-5d45-482a-a06d-561644087eba",
+      "dockerfile": "reports/Dockerfile",
+      "port": 5001,
+      "healthcheck_path": "/health"
+    },
+    "frontend": {
+      "id": "9dee847a-2395-4bb5-aefa-24fa92eaff29",
+      "dockerfile": "frontend/Dockerfile",
+      "port": 8080,
+      "healthcheck_path": "/"
+    },
+    "Postgres": {
+      "id": "02a49f0f-aeca-47d6-b6b1-d2c8233a976e",
+      "image": "postgres:17-alpine",
+      "port": 5432
+    }
+  },
+  "volumes": {
+    "postgres-data": {
+      "id": "72ae53b5-2d08-463c-8c0d-4a095247c5e2",
+      "mount_path": "/var/lib/postgresql/data",
+      "size_mb": 500
+    },
+    "notifications-data": {
+      "id": "495e1605-a76d-48b4-ac3d-7baf87bfce55",
+      "mount_path": "/data",
+      "size_mb": 500
+    }
+  },
+  "auto_deploy_from_github": false
+}

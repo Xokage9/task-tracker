@@ -1,0 +1,8 @@
+{
+  "name": "task-tracker-frontend",
+  "private": true,
+  "scripts": {
+    "dev": ".venv/bin/python scripts/dev.py",
+    "check": "node --check frontend/app.js"
+  }
+}

@@ -1,0 +1,6 @@
+-r core/requirements.txt
+-r notifications/requirements.txt
+-r reports/requirements.txt
+pytest==9.2.0
+WebTest==3.0.7
+PyYAML==6.0.3

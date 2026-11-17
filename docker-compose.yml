@@ -1,0 +1,131 @@
+name: task-tracker
+
+x-core-env: &core-env
+  DATABASE_URL: postgresql+psycopg://tracker:${POSTGRES_PASSWORD:?Run python scripts/init_env.py}@postgres:5432/tracker
+  JWT_SECRET: ${JWT_SECRET:?Run python scripts/init_env.py}
+  SERVICE_TOKEN: ${SERVICE_TOKEN:?Run python scripts/init_env.py}
+  NOTIFICATIONS_URL: http://notifications:5000
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: tracker
+      POSTGRES_USER: tracker
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run python scripts/init_env.py}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U tracker -d tracker"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    restart: unless-stopped
+
+  core:
+    build:
+      context: .
+      dockerfile: core/Dockerfile
+    environment:
+      <<: *core-env
+      ROOT_PATH: /api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  outbox:
+    build:
+      context: .
+      dockerfile: core/Dockerfile
+    command: [python, -m, core.worker]
+    environment: *core-env
+    depends_on:
+      core:
+        condition: service_healthy
+      notifications:
+        condition: service_healthy
+    restart: unless-stopped
+
+  notifications:
+    build:
+      context: .
+      dockerfile: notifications/Dockerfile
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      SERVICE_TOKEN: ${SERVICE_TOKEN}
+      NOTIFICATIONS_DB: /data/notifications.db
+    volumes:
+      - notifications-data:/data
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  mailer:
+    profiles: [email]
+    build:
+      context: .
+      dockerfile: notifications/Dockerfile
+    command: [python, -m, notifications.worker]
+    environment:
+      NOTIFICATIONS_DB: /data/notifications.db
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+    volumes:
+      - notifications-data:/data
+    depends_on:
+      notifications:
+        condition: service_healthy
+    restart: unless-stopped
+
+  reports:
+    build:
+      context: .
+      dockerfile: reports/Dockerfile
+    environment:
+      CORE_URL: http://core:8000
+    depends_on:
+      core:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:5001/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:80"
+    depends_on:
+      core:
+        condition: service_healthy
+      notifications:
+        condition: service_healthy
+      reports:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1/]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  notifications-data:

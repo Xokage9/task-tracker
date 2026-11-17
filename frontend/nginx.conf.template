@@ -1,0 +1,44 @@
+server {
+    listen ${PORT};
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+    client_max_body_size 64k;
+    server_tokens off;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy same-origin always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" always;
+
+    location = /notify/events { return 404; }
+    location = /api/docs {
+        proxy_pass http://${CORE_UPSTREAM}/docs;
+        proxy_set_header Host $host;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy same-origin always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" always;
+    }
+    location /api/ {
+        proxy_pass http://${CORE_UPSTREAM}/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 20s;
+    }
+    location /notify/ {
+        proxy_pass http://${NOTIFICATIONS_UPSTREAM}/;
+        proxy_set_header Host $host;
+    }
+    location /reports-api/ {
+        proxy_pass http://${REPORTS_UPSTREAM}/;
+        proxy_set_header Host $host;
+        proxy_read_timeout 20s;
+    }
+    location / {
+        try_files $uri $uri/ =404;
+        add_header Cache-Control no-cache;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy same-origin always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" always;
+    }
+}
